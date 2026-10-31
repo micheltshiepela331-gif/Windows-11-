@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 11 Custom Web OS</title>
+    <style>
+        /* Styles Globaux & Réinitialisation */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* Zone du Bureau */
+        .desktop {
+            width: 100%;
+            height: calc(100% - 48px);
+            background: url('https://unsplash.com') no-repeat center center/cover;
+            position: relative;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        /* Grille des icônes du bureau */
+        .desktop-icons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 90px;
+            height: 100%;
+            flex-wrap: wrap;
+        }
+
+        .shortcut {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 80px;
+            padding: 10px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+
+        .shortcut:hover {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(4px);
+        }
+
+        .shortcut img {
+            width: 42px;
+            height: 42px;
+            margin-bottom: 6px;
+        }
+
+        .shortcut span {
+            color: #ffffff;
+            font-size: 12px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            word-break: break-word;
+            line-height: 1.2;
+        }
+
+        /* Système de Fenêtres (Windows) */
+        .window {
+            position: absolute;
+            width: 600px;
+            height: 400px;
+            min-width: 300px;
+            min-height: 200px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        /* Fenêtre Maximisée */
+        .window.maximized {
+            width: 100% !important;
+            height: calc(100% - 48px) !important;
+            top: 0 !important;
+            left: 0 !important;
+            border-radius: 0;
+        }
+
+        /* Barre de titre de la fenêtre */
+        .window-header {
+            height: 40px;
+            background: rgba(243, 243, 243, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            cursor: move;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .window-title {
+            font-size: 12px;
+            color: #1c1c1c;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .window-title img {
+            width: 16px;
+            height: 16px;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .control-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #000;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.1s;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .control-btn.close:hover {
+            background: #e81123;
+            color: #fff;
+        }
+
+        /* Contenu de la fenêtre */
+        .window-body {
+            flex: 1;
+            padding: 15px;
+            overflow: auto;
+            background: #ffffff;
+            color: #333333;
+        }
+
+        .window-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Barre des tâches Windows 11 */
+        .taskbar {
+            width: 100%;
+            height: 48px;
+            background: rgba(243, 243, 243, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+        }
+
+        .taskbar-left, .taskbar-right {
+            width: 200px;
+            display: flex;
+            align-items: center;
+        }
+
+        .taskbar-right {
+            justify-content: flex-end;
+            font-size: 12px;
+            color: #333;
+            gap: 12px;
+        }
+
+        .taskbar-center {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .taskbar-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .taskbar-icon:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .taskbar-icon:active {
+            transform: scale(0.9);
+        }
+
+        .taskbar-icon img {
+            width: 26px;
+            height: 26px;
+        }
+
+        /* Indicateur actif sous l'icône de la barre des tâches */
+        .taskbar-icon.open-app::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 3px;
+            background-color: #0067b8;
+            border-radius: 2px;
+        }
+
+        /* Menu Démarrer Windows 11 */
+        .start-menu {
+            position: absolute;
+            bottom: -650px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 520px;
+            height: 580px;
+            background: rgba(243, 243, 243, 0.94);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            transition: bottom 0.35s cubic-bezier(0.1, 0.9, 0.2, 1);
+            z-index: 999;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .start-menu.active {
+            bottom: 60px;
+        }
+
+        /* Contenu du Menu Démarrer */
+        .search-bar {
+            width: 100%;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-bottom: 2px solid #0067b8;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+        }
+
+        .app-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .app-item:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .app-item img {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 4px;
+        }
+
+        .app-item span {
+            font-size: 11px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BUREAU -->
+    <div class="desktop" id="desktop">
+        
+        <!-- Raccourcis Bureau -->
+        <div class="desktop-icons">
+            <div class="shortcut" onclick="openWindow('win-browser')">
+                <img src="https://flaticon.com" alt="Edge">
+                <span>Edge Browser</span>
+            </div>
+            <div class="shortcut" onclick="openWindow('win-notes')">
+                <img src="https://flaticon.com" alt="Notes">
+                <span>Bloc-notes</span>
+            </div>
+        </div>
+
+        <!-- FENÊTRE 1 : NAVIGATEUR -->
+        <div id="win-browser" class="window" style="top: 10%; left: 20%;">
+            <div class="window-header">
+                <div class="window-title">
+                    <img src="https://flaticon.com" alt="">
+                    Navigateur Web
+                </div>
+                <div class="window-controls">
+                    <div class="control-btn" onclick="toggleMaximize('win-browser')">🗖</div>
+                    <div class="control-btn close" onclick="closeWindow('win-browser')">✕</div>
+                </div>
+            </div>
+            <div class="window-body" style="padding:0;">
+                <!-- Chargement d'une page Web d'exemple -->
+                <iframe src="https://wikipedia.org"></iframe>
+            </div>
+        </div>
+
+        <!-- FENÊTRE 2 : BLOC NOTES -->
+        <div id="win-notes" class="window" style="top: 20%; left: 30%;">
+            <div class="window-header">
+                <div class="window-title">
